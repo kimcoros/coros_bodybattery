@@ -38,11 +38,11 @@ h2{font-size:17px;margin:0 0 14px}.metrics{display:grid;grid-template-columns:re
 </div></section>
 <section class="panel"><div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true" data-tab="morning">아침 리포트</button><button class="tab" role="tab" aria-selected="false" data-tab="evening">저녁 리포트</button></div>
 <div id="report" class="muted">실제 COROS 데이터가 연결되면 오늘의 회복 상태와 훈련 권장사항을 표시합니다.</div></section>
-<section class="panel connect"><div><h2 style="margin-bottom:5px">COROS 계정 연결</h2><div class="muted">공식 COROS MCP OAuth 연동 준비 중</div></div><span class="pill">연동 준비 중</span></section>
+<section class="panel connect"><div style="flex:1"><h2 style="margin-bottom:5px">COROS 계정 연결</h2><div class="muted" id="connect-status">공식 COROS MCP OAuth 2.0으로 안전하게 연결합니다.</div></div><button id="connect-coros" class="tab" style="color:var(--mint);border-color:#326b69;white-space:nowrap">COROS 연결</button></section>
 <p class="notice muted">현재 점수는 표시하지 않습니다. 실제 데이터가 확보되기 전에는 점수나 훈련 권장사항을 임의로 생성하지 않습니다. 이 지표는 Garmin 공식 Body Battery 알고리즘이 아닌 개인용 추정 모델입니다.</p>
 </main>
 <script>
 document.getElementById('today').textContent=new Intl.DateTimeFormat('ko-KR',{dateStyle:'medium'}).format(new Date());
 document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b===button)));document.getElementById('report').textContent=button.dataset.tab==='morning'?'실제 COROS 데이터 연결 후 수면·HRV·안정시 심박수와 회복 상태를 바탕으로 아침 훈련 가능 여부를 안내합니다.':'실제 COROS 데이터 연결 후 오늘의 훈련 부하와 스트레스 변화를 반영한 저녁 회복 요약을 제공합니다.';}));
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-</script></body></html>
+</script><script src="/app.js"></script></body></html>
