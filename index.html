@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071321">
+<meta name="description" content="COROS 데이터를 바탕으로 회복 상태를 확인하는 개인용 Body Battery 대시보드">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>COROS Body Battery</title>
+<style>
+:root{color-scheme:dark;--bg:#071321;--panel:#102238;--line:#203b52;--mint:#61e6c0;--muted:#9bb0c2;--white:#f2f7fb}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b1c2e,var(--bg) 45%);color:var(--white);font:16px system-ui,-apple-system,sans-serif;min-height:100vh}
+main{max-width:720px;margin:auto;padding:28px 18px 48px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.eyebrow{color:var(--mint);font-size:12px;letter-spacing:.16em;font-weight:800}.date{color:var(--muted);font-size:13px}
+h1{font-size:25px;margin:8px 0 22px}.panel{background:rgba(16,34,56,.9);border:1px solid var(--line);border-radius:22px;padding:22px;margin:14px 0;box-shadow:0 16px 40px #0002}
+.hero{text-align:center}.gauge{width:210px;height:210px;border-radius:50%;margin:8px auto 16px;display:grid;place-items:center;background:conic-gradient(var(--mint) 0deg,#29445a 0deg 360deg);position:relative}
+.gauge:before{content:"";position:absolute;inset:12px;border-radius:50%;background:#102238}.gauge-inner{position:relative}.score{font-size:48px;font-weight:800;letter-spacing:-2px}.score small{font-size:17px;color:var(--muted);letter-spacing:0}.status{font-weight:700;color:var(--mint)}.muted{color:var(--muted);font-size:13px;line-height:1.6}
+h2{font-size:17px;margin:0 0 14px}.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.metric{background:#0a1a2a;border:1px solid var(--line);border-radius:14px;padding:14px}.metric b{display:block;font-size:14px}.metric span{display:block;color:var(--muted);font-size:12px;margin-top:5px}.weight{color:var(--mint)!important}
+.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid var(--line);border-radius:999px;padding:9px 15px;background:transparent;color:var(--muted);font:inherit}.tab[aria-selected=true]{background:#173b49;color:var(--mint);border-color:#326b69}
+.notice{border-left:3px solid var(--mint);padding:10px 13px;background:#0a1a2a;border-radius:8px}.connect{display:flex;justify-content:space-between;align-items:center;gap:12px}.pill{font-size:11px;border:1px solid #826b3b;color:#f3c978;border-radius:99px;padding:5px 9px;white-space:nowrap}
+@media(max-width:420px){main{padding:22px 14px}.gauge{width:190px;height:190px}}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="eyebrow">PERSONAL RECOVERY DASHBOARD</div><div class="date" id="today"></div></header>
+<h1>COROS Body Battery</h1>
+<section class="panel hero">
+<div class="gauge"><div class="gauge-inner"><div class="score">--<small> / 100</small></div><div class="status">데이터 연동 대기</div></div></div>
+<p class="muted">COROS 계정 연결 후 실제 측정값으로 회복 점수를 계산합니다.</p>
+</section>
+<section class="panel"><h2>회복 지표 구성</h2><div class="metrics">
+<div class="metric"><b>수면</b><span class="weight">가중치 28%</span></div>
+<div class="metric"><b>HRV</b><span class="weight">가중치 20%</span></div>
+<div class="metric"><b>훈련 부하</b><span class="weight">가중치 25%</span></div>
+<div class="metric"><b>안정시 심박수</b><span class="weight">가중치 10%</span></div>
+<div class="metric"><b>스트레스</b><span class="weight">가중치 9%</span></div>
+<div class="metric"><b>COROS 회복 상태</b><span class="weight">가중치 8%</span></div>
+</div></section>
+<section class="panel"><div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true" data-tab="morning">아침 리포트</button><button class="tab" role="tab" aria-selected="false" data-tab="evening">저녁 리포트</button></div>
+<div id="report" class="muted">실제 COROS 데이터가 연결되면 오늘의 회복 상태와 훈련 권장사항을 표시합니다.</div></section>
+<section class="panel connect"><div><h2 style="margin-bottom:5px">COROS 계정 연결</h2><div class="muted">공식 COROS MCP OAuth 연동 준비 중</div></div><span class="pill">연동 준비 중</span></section>
+<p class="notice muted">현재 점수는 표시하지 않습니다. 실제 데이터가 확보되기 전에는 점수나 훈련 권장사항을 임의로 생성하지 않습니다. 이 지표는 Garmin 공식 Body Battery 알고리즘이 아닌 개인용 추정 모델입니다.</p>
+</main>
+<script>
+document.getElementById('today').textContent=new Intl.DateTimeFormat('ko-KR',{dateStyle:'medium'}).format(new Date());
+document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b===button)));document.getElementById('report').textContent=button.dataset.tab==='morning'?'실제 COROS 데이터 연결 후 수면·HRV·안정시 심박수와 회복 상태를 바탕으로 아침 훈련 가능 여부를 안내합니다.':'실제 COROS 데이터 연결 후 오늘의 훈련 부하와 스트레스 변화를 반영한 저녁 회복 요약을 제공합니다.';}));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+</script></body></html>
