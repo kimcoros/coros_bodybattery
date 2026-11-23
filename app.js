@@ -26,7 +26,7 @@ async function beginCorosLogin(){
     if(!ticket)throw Error('로그인 대기 시간이 초과되었습니다. 다시 시도해 주세요.');
     setStatus('COROS 인증을 마무리하고 있어요…');
     const auth=new URL('https://mcp.coros.com/oauth2/authorize');
-    auth.searchParams.set('response_type','code');auth.searchParams.set('client_id',d.clientId);auth.searchParams.set('redirect_uri',d.redirectUri);auth.searchParams.set('code_challenge',challenge);auth.searchParams.set('code_challenge_method','S256');auth.searchParams.set('state',state);auth.searchParams.set('login_ticket',ticket);
+    auth.searchParams.set('response_type','code');auth.searchParams.set('client_id',d.clientId);auth.searchParams.set('redirect_uri',d.redirectUri);auth.searchParams.set('scope','openid offline_access mcp.tools');auth.searchParams.set('resource','https://mcp.coros.com/mcp');auth.searchParams.set('code_challenge',challenge);auth.searchParams.set('code_challenge_method','S256');auth.searchParams.set('state',state);auth.searchParams.set('login_ticket',ticket);
     location.href=auth.toString();
   }catch(e){setStatus('연결 실패: '+e.message);connectButton.disabled=false;}
 }
@@ -50,7 +50,7 @@ async function refreshIfNeeded(){
 async function loadCorosTools(){
   const token=await refreshIfNeeded();if(!token){setStatus('COROS 계정 연결이 필요합니다.');return;}
   try{
-    await mcpRequest(token,'initialize',{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'coros-bodybattery',version:'0.1.0'}},1);
+    await mcpRequest(token,'initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'coros-bodybattery',version:'0.1.0'}},1);
     const list=await mcpRequest(token,'tools/list',{},2);
     const tools=list.result?.tools||[];
     setStatus('COROS 연결 완료 · 데이터 도구 '+tools.length+'개 확인');
