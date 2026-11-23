@@ -6,7 +6,7 @@ export default async function handler(req,res){
     const proto=req.headers["x-forwarded-proto"]||"https";
     if(!host) return res.status(400).json({error:"missing_host"});
     const redirectUri=proto+"://"+host+"/oauth-callback.html";
-    const reg=await fetch("https://mcp.coros.com/connect/register",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({client_name:"COROS Body Battery",redirect_uris:[redirectUri],grant_types:["authorization_code","refresh_token"],response_types:["code"],scope:"",token_endpoint_auth_method:"none"})});
+    const reg=await fetch("https://mcp.coros.com/connect/register",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({client_name:"COROS Body Battery",redirect_uris:[redirectUri],grant_types:["authorization_code","refresh_token"],response_types:["code"],scope:"openid offline_access mcp.tools",token_endpoint_auth_method:"none"})});
     const client=await reg.json();
     if(!reg.ok||!client.client_id) return res.status(502).json({error:"client_registration_failed",detail:client.error||client.message||"COROS OAuth registration failed"});
     const login=await fetch("https://mcp.coros.com/api/v1/cli/login-sessions",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clientId:client.client_id})});
