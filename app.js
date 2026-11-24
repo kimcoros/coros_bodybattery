@@ -3,7 +3,7 @@ const connectButton=$('#connect-coros');
 const connectStatus=$('#connect-status');
 const report=$('#report');
 function setStatus(text){if(connectStatus)connectStatus.textContent=text;}
-async function sha256(text){const bytes=new TextEncoder().encode(text);const hash=await crypto.subtle.digest('SHA-256',bytes);return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function sha256(text){const bytes=new TextEncoder().encode(text);const hash=await crypto.subtle.digest('SHA-256',bytes);return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');}
 async function beginCorosLogin(){
   connectButton.disabled=true;setStatus('COROS 연결 정보를 준비하고 있어요…');
   try{
@@ -13,7 +13,7 @@ async function beginCorosLogin(){
     const state=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
     sessionStorage.setItem('coros_pkce_verifier',verifier);sessionStorage.setItem('coros_oauth_state',state);
     const challenge=await sha256(verifier);
-    const loginWindow=window.open(d.loginUrl,'_blank','noopener');
+    window.open(d.loginUrl,'_blank','noopener');
     setStatus('새 창에서 COROS 로그인을 완료해 주세요. 이 화면은 그대로 두세요.');
     let ticket=null;const deadline=Date.now()+4*60*1000;
     while(Date.now()<deadline){
@@ -31,9 +31,15 @@ async function beginCorosLogin(){
   }catch(e){setStatus('연결 실패: '+e.message);connectButton.disabled=false;}
 }
 async function mcpRequest(token,method,params,id){
-  const r=await fetch('/api/coros/mcp',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+token},body:JSON.stringify({jsonrpc:'2.0',id,method,params})});
-  const raw=await r.text();let data;try{data=JSON.parse(raw)}catch{data={raw}};
+  const r=await fetch('/api/coros/mcp',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+token,'accept':'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id,method,params})});
+  const raw=await r.text();let data;
+  try{data=JSON.parse(raw)}catch{
+    const blocks=raw.split(/\\r?\\n/).filter(x=>x.startsWith('data:')).map(x=>x.slice(5).trim());
+    for(const block of blocks){try{data=JSON.parse(block);if(data?.result||data?.error)break}catch{}}
+    if(!data)data={raw};
+  }
   if(!r.ok)throw Error(data.error?.message||data.message||'COROS MCP 요청 실패 ('+r.status+')');
+  if(data.error)throw Error(data.error.message||'COROS MCP 오류');
   return data;
 }
 async function refreshIfNeeded(){
@@ -47,16 +53,46 @@ async function refreshIfNeeded(){
   }
   return token;
 }
+function textFromResult(result){
+  if(result?.content){return result.content.map(c=>c.text||JSON.stringify(c)).join('\\n');}
+  return JSON.stringify(result?.structuredContent??result??{},null,2);
+}
+function extractDisplay(text){
+  try{return JSON.stringify(JSON.parse(text),null,2)}catch{return text}
+}
 async function loadCorosTools(){
   const token=await refreshIfNeeded();if(!token){setStatus('COROS 계정 연결이 필요합니다.');return;}
   try{
-    await mcpRequest(token,'initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'coros-bodybattery',version:'0.1.0'}},1);
+    await mcpRequest(token,'initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'coros-bodybattery',version:'0.2.0'}},1);
     const list=await mcpRequest(token,'tools/list',{},2);
     const tools=list.result?.tools||[];
     setStatus('COROS 연결 완료 · 데이터 도구 '+tools.length+'개 확인');
-    report.textContent='COROS 계정 인증이 완료되었습니다. 현재 사용 가능한 데이터 도구 '+tools.length+'개를 확인했습니다. 실제 수면·HRV·훈련 부하 필드의 응답 구조를 확인한 뒤 점수 계산을 연결합니다.';
     if(connectButton)connectButton.textContent='COROS 다시 연결';
-  }catch(e){setStatus('연결 확인 실패: '+e.message);report.textContent='인증은 저장됐지만 COROS 데이터 도구 확인에 실패했습니다. 다시 연결하거나 잠시 후 새로고침해 주세요.';}
+    report.textContent='COROS 실제 측정값을 불러오는 중입니다…';
+    const wanted=[
+      ['수면·일일 건강','queryDailyHealthData',{days:1}],
+      ['수면 상세','querySleepOverview',{days:1}],
+      ['수면 HRV','querySleepHrv',{days:1}],
+      ['훈련 부하','queryTrainingLoadAssessment',{days:1}],
+      ['안정시 심박수','queryRestingHeartRate',{days:1}],
+      ['스트레스','queryStressLevel',{days:1}],
+      ['회복 상태','queryRecoveryStatus',{}]
+    ];
+    const results=await Promise.all(wanted.map(async ([label,needle,args],i)=>{
+      const tool=tools.find(t=>t.name===needle)||tools.find(t=>t.name.toLowerCase().includes(needle.toLowerCase()));
+      if(!tool)return {label,error:'COROS 도구 목록에서 찾지 못했습니다.'};
+      try{
+        const schema=tool.inputSchema?.properties||{};
+        const safeArgs={};for(const [k,v] of Object.entries(args)){if(Object.prototype.hasOwnProperty.call(schema,k))safeArgs[k]=v;}
+        const response=await mcpRequest(token,'tools/call',{name:tool.name,arguments:safeArgs},10+i);
+        if(response.result?.isError)throw Error(textFromResult(response.result));
+        return {label,body:extractDisplay(textFromResult(response.result))};
+      }catch(e){return {label,error:e.message};}
+    }));
+    const sections=results.map(x=>x.label+'\\n'+(x.error?'불러오기 실패: '+x.error:x.body)).join('\\n\\n────────────────\\n\\n');
+    report.textContent='[실시간 COROS 원자료 · 점수 산출 전 검증]\n'+sections+'\\n\\n※ 현재는 원자료 연동 확인 단계입니다. 검증되지 않은 Body Battery 점수나 훈련 처방은 표시하지 않습니다.';
+    setStatus('COROS 연결 완료 · 실제 데이터 조회 '+results.filter(x=>!x.error).length+'/'+results.length+'개 성공');
+  }catch(e){setStatus('연결 확인 실패: '+e.message);report.textContent='인증은 저장됐지만 COROS 데이터 조회에 실패했습니다. '+e.message;}
 }
 if(connectButton)connectButton.addEventListener('click',beginCorosLogin);
 if(new URLSearchParams(location.search).get('coros')==='connected'){history.replaceState({},'',location.pathname);loadCorosTools();}
